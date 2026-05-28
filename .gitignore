@@ -1,0 +1,37 @@
+# Binaries / build output
+/bin/
+/dist/
+/build/
+/out/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go build artifacts
+*.test
+
+# Coverage / profiling
+*.out
+*.prof
+
+# Logs / temp
+*.log
+tmp/
+.tmp/
+
+# Local env / secrets
+.env
+.env.*
+
+# Local database artifacts (if you create them)
+*.db
+*.sqlite
+*.sqlite3
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+commands.txt
