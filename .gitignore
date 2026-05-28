@@ -32,6 +32,9 @@ tmp/
 # OS / editor
 .DS_Store
 .idea/
-.vscode/
 *.swp
 commands.txt
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore

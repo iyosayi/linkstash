@@ -51,6 +51,10 @@ func (f *fakeStore) GetStats(ctx context.Context, code string) (link.LinkStatRes
 	}, true, nil
 }
 
+func (f *fakeStore) IncrementStats(ctx context.Context, code string) error {
+	return nil
+}
+
 func TestCreateLinksValidation(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -209,6 +213,7 @@ func TestGetLinkStats(t *testing.T) {
 	)
 
 	rec := httptest.NewRecorder()
+	server.Routes().ServeHTTP(rec, req)
 
 	server.getLinkStats(rec, req)
 
@@ -230,4 +235,39 @@ func TestGetLinkStats(t *testing.T) {
 		t.Fatalf("expected code to be %s, got %s", created.Code, resp.Code)
 	}
 
+}
+
+func TestRecoveryMiddleware(t *testing.T) {
+	logger := slog.Default()
+
+	handler := recoveryMiddleware(logger, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic("boom")
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/panic", nil)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected %d, got %d", http.StatusInternalServerError, rec.Code)
+	}
+}
+
+func TestRequestIDMiddleware(t *testing.T) {
+	handler := requestIDMiddlware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := requestIDFromContext(r.Context())
+		if id == "" {
+			t.Fatal("expected request id")
+		}
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Header().Get("X-Request-ID") == "" {
+		t.Fatal("expected X-Request-ID header")
+	}
 }

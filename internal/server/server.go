@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -11,17 +10,11 @@ import (
 )
 
 type Server struct {
-	store  LinkStore
+	store  link.LinkStore
 	logger *slog.Logger
 }
 
-type LinkStore interface {
-	Create(ctx context.Context, url string) (link.LinkResponse, error)
-	Get(ctx context.Context, code string) (link.LinkResponse, bool, error)
-	GetStats(ctx context.Context, code string) (link.LinkStatResponse, bool, error)
-}
-
-func NewServer(store LinkStore, logger *slog.Logger) *Server {
+func NewServer(store link.LinkStore, logger *slog.Logger) *Server {
 	return &Server{
 		store:  store,
 		logger: logger,
@@ -37,7 +30,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /{code}", s.redirectLink)
 	mux.HandleFunc("GET /links/{code}/stats", s.getLinkStats)
 
-	return loggingMiddleware(s.logger, mux)
+	return recoveryMiddleware(s.logger, requestIDMiddlware(
+		loggingMiddleware(s.logger, mux),
+	))
 }
 
 func isValidURL(rawURL string) bool {
@@ -132,6 +127,10 @@ func (s *Server) redirectLink(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		writeError(w, http.StatusNotFound, "link not found")
 		return
+	}
+
+	if err := s.store.IncrementStats(ctx, code); err != nil {
+		s.logger.Error("increment stats", "error", err)
 	}
 
 	http.Redirect(w, r, link.URL, http.StatusFound)

@@ -7,20 +7,29 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func TestStoreCreateAndGet(t *testing.T) {
+func newTestStore(t *testing.T) (*Store, *pgxpool.Pool) {
+	t.Helper()
+
 	ctx := context.Background()
 
 	databaseURL := "postgres://postgres:postgres@localhost:5432/linkstash?sslmode=disable"
 
 	pool, err := pgxpool.New(ctx, databaseURL)
-
 	if err != nil {
 		t.Fatalf("connect db: %v", err)
 	}
 
-	defer pool.Close()
+	t.Cleanup(func() {
+		pool.Close()
+	})
 
-	store := NewStore(pool)
+	return NewStore(pool), pool
+}
+
+func TestStoreCreateAndGet(t *testing.T) {
+	ctx := context.Background()
+
+	store, pool := newTestStore(t)
 
 	created, err := store.Create(ctx, "https://example.com")
 	if err != nil {
@@ -56,15 +65,7 @@ func TestStoreCreateAndGet(t *testing.T) {
 func TestStoreGetNotFound(t *testing.T) {
 	ctx := context.Background()
 
-	databaseURL := "postgres://postgres:postgres@localhost:5432/linkstash?sslmode=disable"
-
-	pool, err := pgxpool.New(ctx, databaseURL)
-	if err != nil {
-		t.Fatalf("connect db: %v", err)
-	}
-	defer pool.Close()
-
-	store := NewStore(pool)
+	store, _ := newTestStore(t)
 
 	_, ok, err := store.Get(ctx, "does-not-exist")
 	if err != nil {
