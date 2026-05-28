@@ -14,6 +14,13 @@ type Store struct {
 	db *pgxpool.Pool
 }
 
+type LinkStore interface {
+	Create(ctx context.Context, url string) (LinkResponse, error)
+	Get(ctx context.Context, code string) (LinkResponse, bool, error)
+	GetStats(ctx context.Context, code string) (LinkStatResponse, bool, error)
+	IncrementStats(ctx context.Context, code string) error
+}
+
 func generateRandomCode() string {
 	const alphabet = "abcdefghijklmnopqrstuvwxyz"
 	const n = 6
@@ -106,4 +113,16 @@ func (s *Store) GetStats(ctx context.Context, code string) (LinkStatResponse, bo
 	}
 
 	return stats, true, nil
+}
+
+func (s *Store) IncrementStats(ctx context.Context, code string) error {
+	const query = `
+	  UPDATE links
+	  SET
+	  	click_count = click_count + 1,
+		last_accessed_at = NOW()
+	  WHERE code = $1
+	`
+	_, err := s.db.Exec(ctx, query, code)
+	return err
 }
